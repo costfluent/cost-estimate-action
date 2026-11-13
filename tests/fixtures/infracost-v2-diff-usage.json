@@ -1,0 +1,142 @@
+{
+  "currency": "USD",
+  "projects": [
+    {
+      "project_name": "main",
+      "op": "changed",
+      "resources": [
+        {
+          "name": "aws_instance.web_app",
+          "op": "changed",
+          "past_monthly_cost": "70",
+          "monthly_cost": "566",
+          "diff_monthly_cost": "496",
+          "cost_components": [
+            {
+              "name": "Instance usage (Linux/UNIX, on-demand, m5.large) → Instance usage (Linux/UNIX, on-demand, m5.4xlarge)",
+              "unit": "hours",
+              "op": "changed",
+              "past_monthly_cost": "70",
+              "monthly_cost": "561",
+              "diff_monthly_cost": "491",
+              "past_price": "70",
+              "price": "561",
+              "diff_price": "491",
+              "past_quantity": "1",
+              "quantity": "1",
+              "diff_quantity": "0"
+            }
+          ],
+          "subresources": [
+            {
+              "name": "root_block_device",
+              "op": "added",
+              "past_monthly_cost": "0",
+              "monthly_cost": "5",
+              "diff_monthly_cost": "5",
+              "cost_components": [
+                {
+                  "name": "Storage (general purpose SSD, gp2)",
+                  "unit": "hours",
+                  "op": "added",
+                  "past_monthly_cost": "0",
+                  "monthly_cost": "5",
+                  "diff_monthly_cost": "5",
+                  "past_price": "0",
+                  "price": "5",
+                  "diff_price": "5",
+                  "past_quantity": "0",
+                  "quantity": "1",
+                  "diff_quantity": "1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "aws_db_instance.old",
+          "op": "removed",
+          "past_monthly_cost": "120",
+          "monthly_cost": "0",
+          "diff_monthly_cost": "-120",
+          "cost_components": [
+            {
+              "name": "Database instance (on-demand, db.t3.micro)",
+              "unit": "hours",
+              "op": "removed",
+              "past_monthly_cost": "120",
+              "monthly_cost": "0",
+              "diff_monthly_cost": "-120",
+              "past_price": "120",
+              "price": "0",
+              "diff_price": "-120",
+              "past_quantity": "1",
+              "quantity": "0",
+              "diff_quantity": "-1"
+            }
+          ]
+        },
+        {
+          "name": "aws_s3_bucket.data",
+          "op": "changed",
+          "past_monthly_cost": "23",
+          "monthly_cost": "46",
+          "diff_monthly_cost": "23",
+          "cost_components": [
+            {
+              "name": "Standard storage",
+              "unit": "GB",
+              "op": "changed",
+              "past_monthly_cost": "23",
+              "monthly_cost": "46",
+              "diff_monthly_cost": "23",
+              "past_price": "23",
+              "price": "46",
+              "diff_price": "23",
+              "past_quantity": "1",
+              "quantity": "1",
+              "diff_quantity": "0",
+              "usage_based": true
+            }
+          ],
+          "has_usage_costs": true
+        },
+        {
+          "name": "aws_lambda_function.hello",
+          "op": "added",
+          "past_monthly_cost": "0",
+          "monthly_cost": "0",
+          "diff_monthly_cost": "0",
+          "cost_components": [
+            {
+              "name": "Requests",
+              "unit": "1M requests",
+              "op": "added",
+              "past_monthly_cost": "0",
+              "monthly_cost": "0",
+              "diff_monthly_cost": "0",
+              "past_price": "0",
+              "price": "0.2",
+              "diff_price": "0.2",
+              "past_quantity": "0",
+              "quantity": "0",
+              "diff_quantity": "0",
+              "cost_depends_on_usage": true
+            }
+          ],
+          "cost_depends_on_usage": true
+        }
+      ],
+      "past_total_monthly_cost": "213",
+      "total_monthly_cost": "612",
+      "diff_total_monthly_cost": "399",
+      "cost_change_incomplete": true,
+      "has_usage_costs": true
+    }
+  ],
+  "past_total_monthly_cost": "213",
+  "total_monthly_cost": "612",
+  "diff_total_monthly_cost": "399",
+  "cost_change_incomplete": true,
+  "has_usage_costs": true
+}

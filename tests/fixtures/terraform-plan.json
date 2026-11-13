@@ -1,0 +1,213 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.8",
+  "planned_values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "aws_instance.web_app",
+          "mode": "managed",
+          "type": "aws_instance",
+          "name": "web_app",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 1,
+          "values": {
+            "ami": "ami-0a2b3c4d5e6f70819",
+            "instance_type": "m5.4xlarge",
+            "root_block_device": [
+              {
+                "volume_size": 50,
+                "volume_type": "gp2"
+              }
+            ]
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_lambda_function.hello",
+          "mode": "managed",
+          "type": "aws_lambda_function",
+          "name": "hello",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "function_name": "hello",
+            "memory_size": 128,
+            "runtime": "python3.12"
+          },
+          "sensitive_values": {}
+        },
+        {
+          "address": "aws_s3_bucket.data",
+          "mode": "managed",
+          "type": "aws_s3_bucket",
+          "name": "data",
+          "provider_name": "registry.terraform.io/hashicorp/aws",
+          "schema_version": 0,
+          "values": {
+            "arn": "arn:aws:s3:::acme-data",
+            "bucket": "acme-data",
+            "id": "acme-data"
+          },
+          "sensitive_values": {}
+        }
+      ]
+    }
+  },
+  "resource_changes": [
+    {
+      "address": "aws_db_instance.old",
+      "mode": "managed",
+      "type": "aws_db_instance",
+      "name": "old",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "arn": "arn:aws:rds:us-east-1:111111111111:db:old",
+          "id": "db-7KQ2XWLNB4HFTZJ5O3M6PDRVYE",
+          "identifier": "old",
+          "instance_class": "db.t3.micro"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      },
+      "action_reason": "delete_because_no_resource_config"
+    },
+    {
+      "address": "aws_instance.web_app",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_app",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "delete",
+          "create"
+        ],
+        "before": {
+          "ami": "ami-01f2e3d4c5b6a7980",
+          "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0d1e2f3a4b5c6d7e8",
+          "id": "i-0d1e2f3a4b5c6d7e8",
+          "instance_type": "m5.large"
+        },
+        "after": {
+          "ami": "ami-0a2b3c4d5e6f70819",
+          "instance_type": "m5.4xlarge"
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true
+        },
+        "before_sensitive": {},
+        "after_sensitive": {},
+        "replace_paths": [
+          [
+            "ami"
+          ]
+        ]
+      },
+      "action_reason": "replace_because_cannot_update"
+    },
+    {
+      "address": "aws_instance.web_app",
+      "mode": "managed",
+      "type": "aws_instance",
+      "name": "web_app",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "deposed": "6c4a9f1e",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": {
+          "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0f9e8d7c6b5a49382",
+          "id": "i-0f9e8d7c6b5a49382",
+          "instance_type": "m5.large"
+        },
+        "after": null,
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": false
+      }
+    },
+    {
+      "address": "aws_lambda_function.hello",
+      "mode": "managed",
+      "type": "aws_lambda_function",
+      "name": "hello",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "function_name": "hello",
+          "memory_size": 128,
+          "runtime": "python3.12"
+        },
+        "after_unknown": {
+          "arn": true,
+          "id": true
+        },
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_s3_bucket.data",
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "data",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "update"
+        ],
+        "before": {
+          "arn": "arn:aws:s3:::acme-data",
+          "bucket": "acme-data",
+          "id": "acme-data",
+          "tags": {}
+        },
+        "after": {
+          "arn": "arn:aws:s3:::acme-data",
+          "bucket": "acme-data",
+          "id": "acme-data",
+          "tags": {
+            "team": "data"
+          }
+        },
+        "after_unknown": {},
+        "before_sensitive": {},
+        "after_sensitive": {}
+      }
+    },
+    {
+      "address": "data.aws_caller_identity.current",
+      "mode": "data",
+      "type": "aws_caller_identity",
+      "name": "current",
+      "provider_name": "registry.terraform.io/hashicorp/aws",
+      "change": {
+        "actions": [
+          "read"
+        ],
+        "before": null,
+        "after": {
+          "account_id": "111111111111",
+          "arn": "arn:aws:iam::111111111111:user/ci",
+          "id": "111111111111"
+        },
+        "after_unknown": {},
+        "before_sensitive": false,
+        "after_sensitive": {}
+      }
+    }
+  ]
+}
