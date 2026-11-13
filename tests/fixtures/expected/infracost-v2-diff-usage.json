@@ -1,0 +1,44 @@
+{
+  "commit": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+  "currency": "USD",
+  "pullRequest": 42,
+  "repository": "acme/infra",
+  "resources": [
+    {
+      "address": "aws_db_instance.old",
+      "change": "delete",
+      "monthlyCostAfter": null,
+      "monthlyCostBefore": "120",
+      "resourceIds": [],
+      "type": "aws_db_instance"
+    },
+    {
+      "address": "aws_instance.web_app",
+      "change": "update",
+      "monthlyCostAfter": "566",
+      "monthlyCostBefore": "70",
+      "resourceIds": [],
+      "type": "aws_instance"
+    },
+    {
+      "address": "aws_lambda_function.hello",
+      "change": "create",
+      "monthlyCostAfter": null,
+      "monthlyCostBefore": null,
+      "resourceIds": [],
+      "type": "aws_lambda_function"
+    },
+    {
+      "address": "aws_s3_bucket.data",
+      "change": "update",
+      "monthlyCostAfter": "46",
+      "monthlyCostBefore": "23",
+      "resourceIds": [],
+      "type": "aws_s3_bucket"
+    }
+  ],
+  "source": "infracost",
+  "sourceVersion": "0.10.41",
+  "url": "https://github.com/acme/infra/pull/42",
+  "workspaceId": "wsp_8f3k2m4n5p6q7r8s9t0v1w"
+}

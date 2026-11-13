@@ -1,0 +1,9 @@
+{
+  "body": {
+    "pullRequest": 42,
+    "repository": "acme/infra",
+    "resources": [],
+    "workspaceId": "wsp_8f3k2m4n5p6q7r8s9t0v1w"
+  },
+  "missing": []
+}

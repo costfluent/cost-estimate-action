@@ -1,0 +1,3 @@
+{
+  "error": "infracost-to-estimate: the input is not Infracost JSON this reads, which is Infracost v0.10 JSON (\"version\": \"0.2\", from `infracost diff --format json`) and Infracost v2 diff JSON (`infracost diff --json`)"
+}

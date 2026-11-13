@@ -1,0 +1,127 @@
+{
+  "currency": "USD",
+  "projects": [
+    {
+      "project_name": "REPLACED_PROJECT_PATH/testdata/diff_with_compare_to_format_json",
+      "path": "REPLACED_PROJECT_PATH/testdata/diff_with_compare_to_format_json",
+      "op": "changed",
+      "resources": [
+        {
+          "name": "aws_instance.web_app2",
+          "op": "removed",
+          "past_monthly_cost": "1303.28",
+          "monthly_cost": "0",
+          "diff_monthly_cost": "-1303.28",
+          "cost_components": [
+            {
+              "name": "Instance usage (Linux/UNIX, on-demand, m5.8xlarge)",
+              "unit": "hours",
+              "op": "removed",
+              "past_monthly_cost": "1121.28",
+              "monthly_cost": "0",
+              "diff_monthly_cost": "-1121.28",
+              "past_price": "1.536",
+              "price": "0",
+              "diff_price": "-1.536",
+              "past_quantity": "730",
+              "quantity": "0",
+              "diff_quantity": "-730"
+            }
+          ],
+          "subresources": [
+            {
+              "name": "root_block_device",
+              "op": "removed",
+              "past_monthly_cost": "5",
+              "monthly_cost": "0",
+              "diff_monthly_cost": "-5",
+              "cost_components": [
+                {
+                  "name": "Storage (general purpose SSD, gp2)",
+                  "unit": "GB",
+                  "op": "removed",
+                  "past_monthly_cost": "5",
+                  "monthly_cost": "0",
+                  "diff_monthly_cost": "-5",
+                  "past_price": "0.1",
+                  "price": "0",
+                  "diff_price": "-0.1",
+                  "past_quantity": "50",
+                  "quantity": "0",
+                  "diff_quantity": "-50"
+                }
+              ]
+            },
+            {
+              "name": "ebs_block_device[0]",
+              "op": "removed",
+              "past_monthly_cost": "177",
+              "monthly_cost": "0",
+              "diff_monthly_cost": "-177",
+              "cost_components": [
+                {
+                  "name": "Storage (provisioned IOPS SSD, io1)",
+                  "unit": "GB",
+                  "op": "removed",
+                  "past_monthly_cost": "125",
+                  "monthly_cost": "0",
+                  "diff_monthly_cost": "-125",
+                  "past_price": "0.125",
+                  "price": "0",
+                  "diff_price": "-0.125",
+                  "past_quantity": "1000",
+                  "quantity": "0",
+                  "diff_quantity": "-1000"
+                },
+                {
+                  "name": "Provisioned IOPS",
+                  "unit": "IOPS",
+                  "op": "removed",
+                  "past_monthly_cost": "52",
+                  "monthly_cost": "0",
+                  "diff_monthly_cost": "-52",
+                  "past_price": "0.065",
+                  "price": "0",
+                  "diff_price": "-0.065",
+                  "past_quantity": "800",
+                  "quantity": "0",
+                  "diff_quantity": "-800"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "aws_instance.web_app",
+          "type": "aws_instance",
+          "op": "changed",
+          "past_monthly_cost": "742.64",
+          "monthly_cost": "1303.28",
+          "diff_monthly_cost": "560.64",
+          "cost_components": [
+            {
+              "name": "Instance usage (Linux/UNIX, on-demand, m5.4xlarge) → Instance usage (Linux/UNIX, on-demand, m5.8xlarge)",
+              "unit": "hours",
+              "op": "changed",
+              "past_monthly_cost": "560.64",
+              "monthly_cost": "1121.28",
+              "diff_monthly_cost": "560.64",
+              "past_price": "0.768",
+              "price": "1.536",
+              "diff_price": "0.768",
+              "past_quantity": "730",
+              "quantity": "730",
+              "diff_quantity": "0"
+            }
+          ]
+        }
+      ],
+      "past_total_monthly_cost": "2045.92",
+      "total_monthly_cost": "1303.28",
+      "diff_total_monthly_cost": "-742.64"
+    }
+  ],
+  "past_total_monthly_cost": "2045.92",
+  "total_monthly_cost": "1303.28",
+  "diff_total_monthly_cost": "-742.64"
+}

@@ -1,0 +1,93 @@
+name: Costfluent cost estimate
+description: Post a Terraform pull request's Infracost estimate to Costfluent and record its apply, to see planned cost beside actual
+author: Costfluent
+branding:
+  icon: dollar-sign
+  color: green
+
+inputs:
+  mode:
+    description: "`estimate` on the pull request, or `apply` after `terraform apply`"
+    required: true
+    default: estimate
+  api-token:
+    description: Costfluent API token that may submit cost estimates, from a secret
+    required: true
+  workspace-id:
+    description: Costfluent workspace the estimate belongs to, such as wsp_...
+    required: true
+  infracost-json:
+    description: "Path to Infracost's JSON: `infracost diff --format json` (v0.10) or `infracost diff --json` (v2). Estimate mode"
+    required: false
+  terraform-plan-json:
+    description: "Path to `terraform show -json` of the saved plan. Estimate mode: each resource's change and ids, optional. Apply mode: the resources created, required"
+    required: false
+  terraform-state-json:
+    description: "Path to `terraform show -json` after the apply, for the ids of created and replaced resources. Apply mode"
+    required: false
+  repository:
+    description: Repository of the pull request
+    required: false
+    default: ${{ github.repository }}
+  pull-request:
+    description: Pull request number; on a push after the merge, pass the merged pull request's
+    required: false
+    default: ${{ github.event.pull_request.number }}
+  commit:
+    description: Commit the estimate was made for
+    required: false
+    default: ${{ github.event.pull_request.head.sha || github.sha }}
+  url:
+    description: Link to the pull request, https only
+    required: false
+    default: ${{ github.event.pull_request.html_url }}
+  infracost-version:
+    description: Infracost version that wrote the JSON, kept with the estimate
+    required: false
+  api-url:
+    description: Costfluent API base URL, https only
+    required: false
+    default: https://api.costfluent.com
+  comment:
+    description: "`true` to keep one comment on the pull request with the planned monthly change, edited on each push. Needs `pull-requests: write`. Estimate mode"
+    required: false
+    default: "false"
+  github-token:
+    description: GitHub token that writes the comment
+    required: false
+    default: ${{ github.token }}
+  fail-above:
+    description: "Fail the job, with exit status 4 and after the summary and the comment are written, when the planned monthly change is above this amount in the estimate's currency, such as 500. Estimate mode"
+    required: false
+
+outputs:
+  estimate-id:
+    description: Id of the cost estimate posted or applied
+    value: ${{ steps.post.outputs.estimate-id }}
+  monthly-change:
+    description: The planned monthly change Costfluent computed for the estimate, a decimal such as 560.64 or -120; empty when nothing was posted or the API answered without it
+    value: ${{ steps.post.outputs.monthly-change }}
+
+runs:
+  using: composite
+  steps:
+    - name: Post to Costfluent
+      id: post
+      shell: bash
+      env:
+        COSTFLUENT_MODE: ${{ inputs.mode }}
+        COSTFLUENT_API_TOKEN: ${{ inputs.api-token }}
+        COSTFLUENT_WORKSPACE_ID: ${{ inputs.workspace-id }}
+        COSTFLUENT_INFRACOST_JSON: ${{ inputs.infracost-json }}
+        COSTFLUENT_TERRAFORM_PLAN_JSON: ${{ inputs.terraform-plan-json }}
+        COSTFLUENT_TERRAFORM_STATE_JSON: ${{ inputs.terraform-state-json }}
+        COSTFLUENT_REPOSITORY: ${{ inputs.repository }}
+        COSTFLUENT_PULL_REQUEST: ${{ inputs.pull-request }}
+        COSTFLUENT_COMMIT: ${{ inputs.commit }}
+        COSTFLUENT_URL: ${{ inputs.url }}
+        COSTFLUENT_INFRACOST_VERSION: ${{ inputs.infracost-version }}
+        COSTFLUENT_BASE_URL: ${{ inputs.api-url }}
+        COSTFLUENT_COMMENT: ${{ inputs.comment }}
+        COSTFLUENT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        COSTFLUENT_FAIL_ABOVE: ${{ inputs.fail-above }}
+      run: bash "$GITHUB_ACTION_PATH/post-estimate.sh"

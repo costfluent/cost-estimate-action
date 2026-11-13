@@ -1,0 +1,3 @@
+{
+  "error": "infracost-to-estimate: changes are in more than one Infracost project (\"my first project\", \"my first project again\", \"my terragrunt dev project\", \"my terragrunt prod project\", \"my workspace project\"); an estimate holds one Terraform root, so run Infracost on the root this pull request changes"
+}

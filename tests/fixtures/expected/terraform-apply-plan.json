@@ -1,0 +1,30 @@
+{
+  "body": {
+    "pullRequest": 42,
+    "repository": "acme/infra",
+    "resources": [
+      {
+        "address": "aws_default_subnet.default",
+        "resourceIds": [
+          "subnet-d4d0998b",
+          "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-d4d0998b"
+        ]
+      },
+      {
+        "address": "aws_instance.ec2",
+        "resourceIds": [
+          "i-07c5f80a7588ec957",
+          "arn:aws:ec2:us-east-1:111111111111:instance/i-07c5f80a7588ec957"
+        ]
+      },
+      {
+        "address": "aws_volume_attachment.storage_attachment",
+        "resourceIds": [
+          "vai-1043230385"
+        ]
+      }
+    ],
+    "workspaceId": "wsp_8f3k2m4n5p6q7r8s9t0v1w"
+  },
+  "missing": []
+}

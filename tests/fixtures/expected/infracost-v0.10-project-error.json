@@ -1,0 +1,3 @@
+{
+  "error": "infracost-to-estimate: project \"REPLACED_PROJECT_PATH/testdata/diff_with_compare_to_with_current_project_error/dev\" failed in Infracost: Error loading Terraform modules: failed to parse file REPLACED_PROJECT_PATH/testdata/diff_with_compare_to_with_current_project_error/dev/mod_with_error.tf diag: REPLACED_PROJECT_PATH/testdata/diff_with_compare_to_with_current_project_error/dev/mod_with_error.tf:1,9-10: Invalid block definition; Either a quoted string block label or an opening brace (\"{\") is expected here., and 1 other diagnostic(s); fix it and run Infracost again"
+}

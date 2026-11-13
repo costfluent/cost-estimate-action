@@ -1,0 +1,20 @@
+{
+  "commit": "9fceb02d0ae598e95dc970b74767f19372d61af8",
+  "currency": "USD",
+  "pullRequest": 42,
+  "repository": "acme/infra",
+  "resources": [
+    {
+      "address": "module.ecr.aws_ecr_repository.this[0]",
+      "change": "create",
+      "monthlyCostAfter": null,
+      "monthlyCostBefore": null,
+      "resourceIds": [],
+      "type": "aws_ecr_repository"
+    }
+  ],
+  "source": "infracost",
+  "sourceVersion": "0.10.41",
+  "url": "https://github.com/acme/infra/pull/42",
+  "workspaceId": "wsp_8f3k2m4n5p6q7r8s9t0v1w"
+}
