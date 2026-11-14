@@ -1,4 +1,4 @@
-name: Costfluent cost estimate
+name: Costfluent Cost Estimate
 description: Post a Terraform pull request's Infracost estimate to Costfluent and record its apply, to see planned cost beside actual
 author: Costfluent
 branding:
