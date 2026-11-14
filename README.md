@@ -1,4 +1,4 @@
-# Costfluent cost estimate
+# Costfluent Cost Estimate
 
 A GitHub Action that posts each Terraform pull request's cost estimate from
 [Infracost](https://github.com/infracost/infracost) to [Costfluent](https://costfluent.com), and
