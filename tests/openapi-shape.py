@@ -53,8 +53,8 @@ def audit(document, schema, at, seen):
             raise Unread(f"{at}: {keyword} on a schema whose type is not object")
     if ("items" in schema) != (kind == "array"):
         raise Unread(f"{at}: items and type array must come together")
-    if not isinstance(schema.get("additionalProperties", True), bool):
-        raise Unread(f"{at}: additionalProperties is a schema")
+    if not isinstance(schema.get("additionalProperties", True), (bool, dict)):
+        raise Unread(f"{at}: additionalProperties is neither a boolean nor a schema")
     fmt = schema.get("format")
     # decimal is a string whose digits only the pattern beside it holds.
     if fmt is not None and not (
@@ -65,6 +65,8 @@ def audit(document, schema, at, seen):
         raise Unread(f"{at}: oneOf with {len(schema['oneOf'])} members")
     children = [(member, f"{at}.{name}") for name, member in schema.get("properties", {}).items()]
     children += [(schema["items"], f"{at}[]")] if "items" in schema else []
+    extra = schema.get("additionalProperties")
+    children += [(extra, f"{at}.*")] if isinstance(extra, dict) else []
     children += [(schema["oneOf"][0], at)] if "oneOf" in schema else []
     if "$ref" in schema and schema["$ref"] not in seen:
         seen.add(schema["$ref"])
@@ -104,6 +106,8 @@ def check(document, value, schema, at):
         for name, member in value.items():
             if name in properties:
                 errors += check(document, member, properties[name], f"{at}.{name}")
+            elif isinstance(schema.get("additionalProperties"), dict):
+                errors += check(document, member, schema["additionalProperties"], f"{at}.{name}")
             elif schema.get("additionalProperties", True) is False:
                 errors.append(f"{at}.{name} is sent but not in the contract")
     elif kind == "array":

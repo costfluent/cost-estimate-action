@@ -118,8 +118,8 @@ respond() {
   [[ -z "${5:-}" ]] || printf '%s' "$5" >"$STUB_DIR/response-$1.exit"
 }
 calls() { cat "$STUB_DIR/count" 2>/dev/null || echo 0; }
-# off_contract: the case answers with a receipt outside the contract on purpose, so the contract
-# check below leaves its answers out.
+# off_contract: the case answers with a receipt or a refusal outside the contract on purpose, so the
+# contract checks below leave its answers out.
 off_contract() { : >"$STUB_DIR/off-contract"; }
 # run_script: runs post-estimate.sh with the stubs first on PATH; its output lands in
 # $STUB_DIR/output and its exit status in $status.
@@ -152,6 +152,14 @@ if convert "$fixtures/infracost-v2-diff.json" >"$work/v2.json" 2>"$work/err"; th
   same_json "v2 diff of the same change converts to the same document" "$work/v2.json" "$same_change"
 else
   fail "v2 diff of the same change converts to the same document" "$(cat "$work/err")"
+fi
+# A diagnostic marked "isError": false is a warning: the project converts as if it had none.
+jq '.projects[0].metadata.errors = [{"message": "a warning", "isError": false}]' \
+  "$fixtures/infracost-v0.10-diff.json" >"$work/v010-warning.json"
+if convert "$work/v010-warning.json" >"$work/v010-warning-out.json" 2>"$work/err"; then
+  same_json "a v0.10 project carrying only an Infracost warning converts" "$work/v010-warning-out.json" "$same_change"
+else
+  fail "a v0.10 project carrying only an Infracost warning converts" "$(cat "$work/err")"
 fi
 
 # The amounts are in the currency the document's root names, so the estimate carries that one; a
@@ -330,11 +338,37 @@ done <<'COSTS'
 .5 0.5
 0.000000005 0.00000001
 0e5 0
+1.5E-3 0.0015
+5e-9 0.00000001
+-2.5e-2 -0.025
+.5e-1 0.05
+1e-9 0
 COSTS
 if [[ -z "$zeros_wrong" ]]; then
   pass "leading and trailing zeros are stripped, keeping one before the point"
 else
   fail "leading and trailing zeros are stripped, keeping one before the point" "$zeros_wrong"
+fi
+
+# A cost Infracost wrote as a JSON number converts through its text, which jq may give with a
+# negative exponent (-4.9E-9), so a small number reaches the same padding as an exponent string.
+numbers_wrong=""
+while read -r cost want; do
+  jq --argjson cost "$cost" '.projects[0].breakdown.resources[0].monthlyCost = $cost' \
+    "$fixtures/infracost-v0.10-diff.json" >"$work/number.json"
+  got="$(convert "$work/number.json" | jq -r '.resources[] | select(.address == "aws_instance.web_app") | .monthlyCostAfter')" \
+    || got="a refusal"
+  [[ "$got" == "$want" ]] || numbers_wrong+="$cost gave $got, not $want; "
+done <<'COSTS'
+12.5 12.5
+0.00001 0.00001
+1e-5 0.00001
+-0.0000000049 0
+COSTS
+if [[ -z "$numbers_wrong" ]]; then
+  pass "a cost written as a JSON number converts as its decimal text"
+else
+  fail "a cost written as a JSON number converts as its decimal text" "$numbers_wrong"
 fi
 
 # --- refusals, before any request -----------------------------------------------------------
@@ -376,6 +410,10 @@ refused_before_request "a Terraform plan given as Infracost JSON is refused" \
   "$fixtures/terraform-plan.json" 'infracost diff --json'
 refused_before_request "a v0.10 document with a failed project is refused" \
   "$fixtures/infracost-v0.10-project-error.json" 'failed in Infracost'
+jq '.projects[0].metadata.errors = [{"message": "failed"}]' \
+  "$fixtures/infracost-v0.10-diff.json" >"$work/no-flag-error.json"
+refused_before_request "a v0.10 project error without an isError flag is refused" \
+  "$work/no-flag-error.json" 'failed in Infracost'
 refused_before_request "changes in several Terraform roots are refused" \
   "$fixtures/infracost-v0.10-projects.json" 'more than one Infracost project'
 printf 'not json' >"$work/not-json"
@@ -455,6 +493,35 @@ check "ids are deduplicated in order and at most three" \
   jq -e '[.resources[] | select(.address == "aws_s3_bucket.data" or .address == "aws_db_instance.old") | .resourceIds]
     == [["db-7KQ2XWLNB4HFTZJ5O3M6PDRVYE", "arn:aws:rds:us-east-1:111111111111:db:old", "https://example.test/old"],
         ["arn:aws:s3:::acme-data", "https://www.googleapis.com/storage/v1/b/acme-data"]]' "$work/dedupe.json"
+
+# Terraform orders a create_before_destroy replacement create first. It is a replace all the same,
+# so the API takes the apply's new ids for it, with the same ids and costs as the delete-first order.
+jq '(.resource_changes[] | select(.address == "aws_instance.web_app" and .deposed == null) | .change.actions)
+      = ["create", "delete"]' "$fixtures/terraform-plan.json" >"$work/plan-create-first.json"
+convert --slurpfile terraformPlan "$work/plan-create-first.json" "$fixtures/infracost-v2-diff-usage.json" \
+  | jq .resources >"$work/create-first-resources.json"
+same_json "a create_before_destroy replacement is a replace" "$work/create-first-resources.json" \
+  "$(jq .resources "$fixtures/expected/infracost-v2-diff-usage+terraform-plan.json")"
+
+# The API refuses an id over 512 characters: it is left out before the cap of three, so the next id
+# takes its place, and one of exactly 512 is kept.
+id_513="arn:$(printf 'x%.0s' {1..509})"
+id_512="arn:$(printf 'x%.0s' {1..508})"
+jq --arg arn "$id_513" --arg self_link https://www.googleapis.com/compute/v1/projects/acme/zones/us-east1-b/instances/old \
+  '(.resource_changes[] | select(.address == "aws_db_instance.old") | .change.before) |= (.arn = $arn | .self_link = $self_link)' \
+  "$fixtures/terraform-plan.json" >"$work/plan-long-id.json"
+convert --slurpfile terraformPlan "$work/plan-long-id.json" "$fixtures/infracost-v2-diff-usage.json" >"$work/long-id.json"
+check "an id over 512 characters is left out and the next takes its place" \
+  jq -e '.resources[] | select(.address == "aws_db_instance.old") | .resourceIds
+    == ["//compute.googleapis.com/projects/acme/zones/us-east1-b/instances/old", "db-7KQ2XWLNB4HFTZJ5O3M6PDRVYE",
+        "https://www.googleapis.com/compute/v1/projects/acme/zones/us-east1-b/instances/old"]' "$work/long-id.json"
+jq --arg arn "$id_512" \
+  '(.resource_changes[] | select(.address == "aws_db_instance.old") | .change.before) |= (.arn = $arn | .self_link = "https://example.test/old")' \
+  "$fixtures/terraform-plan.json" >"$work/plan-512-id.json"
+convert --slurpfile terraformPlan "$work/plan-512-id.json" "$fixtures/infracost-v2-diff-usage.json" \
+  | jq '.resources[] | select(.address == "aws_db_instance.old") | .resourceIds' >"$work/512-ids.json"
+same_json "an id of exactly 512 characters is kept" "$work/512-ids.json" \
+  "[\"db-7KQ2XWLNB4HFTZJ5O3M6PDRVYE\", \"$id_512\", \"https://example.test/old\"]"
 
 # Google Cloud: its billing data names a resource by its global name, which the conversion builds
 # from the self_link, so that comes first and the raw self_link, which never matches, last. A
@@ -674,8 +741,8 @@ done
 # --- retries --------------------------------------------------------------------------------
 
 new_case
-respond 1 429 '{"title":"Too Many Requests"}' 'Retry-After: 7'
-respond 2 503 '{"title":"Service Unavailable"}'
+respond 1 429 '{"type":"about:blank","title":"Rate Limit Exceeded","status":429,"code":"rate_limit_exceeded","retryable":true}' 'Retry-After: 7'
+respond 2 503 '{"type":"about:blank","title":"Service Unavailable","status":503,"code":"service_unavailable","retryable":true}'
 respond 3 000
 respond 4 200 '{"id":"est_01J9Z3Q4XKWD7VB2MF8N6Y","state":"proposed"}'
 run_script
@@ -718,9 +785,19 @@ for code in 5 6 7 35 52 55 56; do
   check "curl exit $code is retried" ended success 2
 done
 
+# The API's code, title and retryable for each refused status, as its ApiError carries them. A
+# 408 is retryable to the API, yet the Action fails on it at once, which this loop pins.
+declare -A api_code=([400]=validation_failed [401]=unauthorized [403]=forbidden [404]=not_found
+  [408]=request_timeout [409]=conflict [413]=payload_too_large)
+declare -A api_title=([400]="Validation Failed" [401]="Authentication Error" [403]="Authentication Error"
+  [404]="Resource Not Found" [408]="Request Timeout" [409]="Resource Conflict" [413]="Payload Too Large")
+declare -A api_retryable=([400]=false [401]=false [403]=false [404]=false [408]=true [409]=false [413]=false)
 for code in 400 401 403 404 408 409 413; do
   new_case
-  respond 1 "$code" '{"type":"about:blank","title":"Refused","status":'"$code"',"detail":"Detail for '"$code"'"}'
+  respond 1 "$code" "$(jq -nc --argjson status "$code" --arg code "${api_code[$code]}" --arg title "${api_title[$code]}" \
+    --argjson retryable "${api_retryable[$code]}" \
+    '{type: "about:blank", title: $title, status: $status, detail: "Detail for \($status)", code: $code,
+      retryable: $retryable}')"
   run_script
   if ended failure 1 "Detail for $code" && [[ ! -f "$STUB_DIR/sleeps" ]]; then
     pass "$code fails at once with the problem's detail"
@@ -728,6 +805,32 @@ for code in 400 401 403 404 408 409 413; do
     fail "$code fails at once with the problem's detail" "status $status, $(calls) requests"
   fi
 done
+
+# The API refuses with an ApiError, whose field errors are a list of {name, reason}. Two failures
+# of the request's validator carry no detail, so their reasons are the customer's only clue.
+new_case
+respond 1 400 "$(jq -nc '{type: "about:blank", title: "Validation Failed", status: 400, code: "validation_failed",
+  retryable: false, traceId: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  errors: [{name: "source", reason: "\u0027Source\u0027 must not be empty."},
+           {name: "currency", reason: "\u0027Currency\u0027 must not be empty."}]}')"
+run_script
+if ended failure 1 "Validation Failed: source: 'Source' must not be empty.: currency: 'Currency' must not be empty." \
+  && lacks '{"name"' "$STUB_DIR/output"; then
+  pass "a 400 prints each field error's name and reason"
+else
+  fail "a 400 prints each field error's name and reason" "$(head -5 "$STUB_DIR/output")"
+fi
+new_case
+respond 1 403 "$(jq -nc '{type: "about:blank", title: "Authentication Error", status: 403,
+  detail: "API token lacks capability: SubmitCostEstimates", code: "forbidden", retryable: false,
+  traceId: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  errors: [{name: "capability", reason: "submitCostEstimates", code: "missing_capability"}]}')"
+run_script
+if ended failure 1 'capability: submitCostEstimates' && lacks 'missing_capability' "$STUB_DIR/output"; then
+  pass "a 403 for a missing capability names the capability to grant"
+else
+  fail "a 403 for a missing capability names the capability to grant" "$(head -5 "$STUB_DIR/output")"
+fi
 
 # In GitHub Actions a line that starts with :: is a workflow command, so a value from the pull
 # request or the API holding a line break must stay inside the one ::error:: line.
@@ -739,7 +842,7 @@ one_error() {
 }
 new_case
 export GITHUB_ACTIONS=true
-respond 1 400 '{"title":"Refused","detail":"Detail\n::warning::x"}'
+respond 1 400 '{"type":"about:blank","title":"Validation Failed","status":400,"detail":"Detail\n::warning::x","code":"validation_failed","retryable":false}'
 run_script
 check "a problem detail holding a line break stays in one escaped ::error:: line" one_error 'Detail%0A::warning::x'
 
@@ -799,6 +902,28 @@ check "the applied estimate's id is a step output" grep -qx 'estimate-id=est_01J
 check "apply keeps the token off curl's command line" lacks "$token" "$STUB_DIR"/call-*.argv
 check "apply sends the token in the config" grep -qxF "header = \"Authorization: Bearer $token\"" "$STUB_DIR/call-1.stdin"
 
+# The apply leaves out an id over 512 characters before the cap of three, as the estimate does, and
+# keeps one of exactly 512.
+jq --arg long "$id_513" --arg exact "$id_512" \
+  '(.values.root_module.resources[] | select(.address == "aws_instance.ec2") | .values)
+      |= (.arn = $long | .self_link = "https://www.googleapis.com/compute/v1/projects/acme/zones/us-east1-b/instances/ec2")
+  | (.values.root_module.resources[] | select(.address == "aws_default_subnet.default") | .values) |= (.arn = $exact)' \
+  "$fixtures/terraform-apply-state.json" >"$work/apply-long-id-state.json"
+new_apply_case
+export COSTFLUENT_TERRAFORM_STATE_JSON="$work/apply-long-id-state.json"
+run_script
+check "apply with an id over 512 characters succeeds" ended success 1
+same_json "apply leaves out an id over 512 characters" "$STUB_DIR/call-1.body" '{
+  "workspaceId": "wsp_8f3k2m4n5p6q7r8s9t0v1w", "repository": "acme/infra", "pullRequest": 42,
+  "resources": [
+    {"address": "aws_default_subnet.default", "resourceIds": ["subnet-d4d0998b", "'"$id_512"'"]},
+    {"address": "aws_instance.ec2",
+     "resourceIds": ["//compute.googleapis.com/projects/acme/zones/us-east1-b/instances/ec2", "i-07c5f80a7588ec957",
+                     "https://www.googleapis.com/compute/v1/projects/acme/zones/us-east1-b/instances/ec2"]},
+    {"address": "aws_volume_attachment.storage_attachment", "resourceIds": ["vai-1043230385"]}
+  ]
+}'
+
 # Replaces in either order, a module's keyed address, a deposed object and a create the state does
 # not hold: the authored plan, two of its addresses moved to resources the Terraform 0.14 state holds.
 jq '(.resource_changes[] | select(.address == "aws_instance.web_app" and .deposed == null))
@@ -840,18 +965,18 @@ same_json "apply sends a replaced GCP resource with its global name first" "$STU
 }'
 
 new_apply_case
-respond 1 404 '{"title":"Not Found","detail":"No cost estimate for this reference."}'
+respond 1 404 '{"type":"about:blank","title":"Resource Not Found","status":404,"detail":"No cost estimate for this reference.","code":"not_found","retryable":false}'
 run_script
 check "apply without an estimate posts once and succeeds" ended success 1 'No cost estimate'
 
 new_apply_case
-respond 1 404 '{"title":"Not Found","detail":"workspace '"'"'wsp_typo'"'"' not found"}'
+respond 1 404 '{"type":"about:blank","title":"Resource Not Found","status":404,"detail":"workspace '"'"'wsp_typo'"'"' not found","code":"not_found","retryable":false}'
 run_script
 check "apply names the API's reason for a 404, so a wrong workspace shows" ended success 1 "workspace 'wsp_typo' not found"
 
 new_apply_case
 respond 1 503 '' 'Retry-After: 3'
-respond 2 409 '{"title":"Conflict","detail":"The estimate was applied with other ids."}'
+respond 2 409 '{"type":"about:blank","title":"Resource Conflict","status":409,"detail":"The estimate was applied with other ids.","code":"conflict","retryable":false}'
 run_script
 check "apply retries a 5xx and fails at once on a conflict" ended failure 2 'applied with other ids'
 check "apply waited as Retry-After asked" slept '3 '
@@ -871,17 +996,28 @@ unset COSTFLUENT_TERRAFORM_PLAN_JSON
 run_script
 check "apply without the plan is refused before any request" ended failure 0 'COSTFLUENT_TERRAFORM_PLAN_JSON is required'
 
-jq -n '{format_version: "1.2", planned_values: {}, resource_changes: [range(2001)
-  | {address: "aws_instance.i\(.)", mode: "managed", type: "aws_instance", change: {actions: ["create"], before: null}}]}' \
-  >"$work/large-plan.json"
-jq -n '{format_version: "1.0", values: {root_module: {resources: [range(2001)
-  | {address: "aws_instance.i\(.)", mode: "managed", type: "aws_instance", values: {id: "i-\(.)"}}]}}}' \
-  >"$work/large-state.json"
-new_apply_case
-export COSTFLUENT_TERRAFORM_PLAN_JSON="$work/large-plan.json"
-export COSTFLUENT_TERRAFORM_STATE_JSON="$work/large-state.json"
+# new_large_apply_case <count>: apply mode with a plan creating <count> instances and the state
+# holding an id for each, the API's limit of 2,000 per apply probed from both sides.
+new_large_apply_case() {
+  jq -n --argjson n "$1" '{format_version: "1.2", planned_values: {}, resource_changes: [range($n)
+    | {address: "aws_instance.i\(.)", mode: "managed", type: "aws_instance", change: {actions: ["create"], before: null}}]}' \
+    >"$work/large-plan.json"
+  jq -n --argjson n "$1" '{format_version: "1.0", values: {root_module: {resources: [range($n)
+    | {address: "aws_instance.i\(.)", mode: "managed", type: "aws_instance", values: {id: "i-\(.)"}}]}}}' \
+    >"$work/large-state.json"
+  new_apply_case
+  export COSTFLUENT_TERRAFORM_PLAN_JSON="$work/large-plan.json"
+  export COSTFLUENT_TERRAFORM_STATE_JSON="$work/large-state.json"
+}
+
+new_large_apply_case 2001
 run_script
 check "more created resources than one apply takes are refused before any request" ended failure 0 '2,000'
+
+new_large_apply_case 2000
+run_script
+check "an apply of exactly 2,000 created resources is posted once" ended success 1
+check "the apply of 2,000 posts every one of them" jq -e '.resources | length == 2000' "$STUB_DIR/call-1.body"
 
 new_case
 export COSTFLUENT_MODE=plan
@@ -1051,6 +1187,28 @@ check "without comment, nothing calls GitHub" ended success 1
 check "without comment, the summary still shows the planned change, without the marker" \
   [ "$(cat "$GITHUB_STEP_SUMMARY")" == "${expected_comment#"$marker"$'\n'}" ]
 
+# The Change row carries a plus only before a positive change: a decrease keeps its own minus and a
+# zero carries no plus.
+while read -r change shown reading; do
+  new_case
+  export GITHUB_STEP_SUMMARY="$STUB_DIR/summary"
+  : >"$GITHUB_STEP_SUMMARY"
+  receipt_with "$change" >"$STUB_DIR/response-default.body"
+  run_script
+  name="a planned change of $change is $reading: the Change row reads $shown"
+  if ended success 1 && grep -qxF "| Change | \`$shown USD\` |" "$GITHUB_STEP_SUMMARY" && lacks '+-' "$GITHUB_STEP_SUMMARY"; then
+    pass "$name"
+  else
+    fail "$name" "$(grep -F '| Change |' "$GITHUB_STEP_SUMMARY")"
+  fi
+done <<'CHANGES'
+-900.5 -900.5 a decrease, without a plus
+0 0 no change, without a plus
+0.00 0.00 no change, without a plus
+0.5 +0.5 an increase below one, with a plus
+560.64 +560.64 an increase, with a plus
+CHANGES
+
 new_apply_case
 export COSTFLUENT_COMMENT=true COSTFLUENT_FAIL_ABOVE=0
 run_script
@@ -1135,6 +1293,14 @@ respond 3 503 '{"message":"Service Unavailable"}'
 run_script
 check "a comment GitHub fails to create is not sent again, since it may have landed" \
   ended failure 3 "POST $github/issues/42/comments answered 503: Service Unavailable"
+
+# GitHub's field errors are not the API's {name, reason}: each is printed whole, so its message shows.
+new_comment_case
+respond 2 200 '[]'
+respond 3 422 '{"message":"Validation Failed","errors":[{"resource":"IssueComment","code":"unprocessable","field":"data","message":"Body is too long (maximum is 65536 characters)"}],"documentation_url":"https://docs.github.com/rest/issues/comments#create-an-issue-comment","status":"422"}'
+run_script
+check "a GitHub 422 names GitHub's field error" ended failure 3 \
+  'answered 422: Validation Failed: {"resource":"IssueComment","code":"unprocessable","field":"data","message":"Body is too long (maximum is 65536 characters)"}'
 
 # The commit comes from the pull request: Markdown, HTML, a mention and a line break in it stay
 # inside one code span, and a long one is cut inside it.
@@ -1310,6 +1476,30 @@ for answer in "$work"/case-*/call-*.answer; do
   receipts+=("$answer")
 done
 holds_contract "every receipt the stub answers with is a CostEstimateReceiptResponse" CostEstimateReceiptResponse "${receipts[@]}"
+# A stubbed refusal outside the contract would let the script read a field the API never sends.
+refusals=()
+for answer in "$work"/case-*/call-*.answer; do
+  [[ ! -f "$(dirname "$answer")/off-contract" && "$(cat "${answer%.answer}.status")" == [45]?? ]] || continue
+  grep -qx 'https://api.costfluent.com/v1/cost-estimates\(/apply\)\{0,1\}' "${answer%.answer}.argv" || continue
+  refusals+=("$answer")
+done
+holds_contract "every refusal the stub answers with is an ApiError" ApiError "${refusals[@]}"
+check "the refusals checked include field errors" grep -lq '"errors":\[{"name":' "${refusals[@]}"
+# An entry's params is a map whose values the contract types as strings, and the check reads them.
+# No refusal on these routes carries params today, so this is the open-cap refusal with a param added.
+jq -nc --arg reason "A workspace holds at most 1,000 proposed or applied cost estimates; an estimate closes once reconciled, inconclusive or expired." \
+  '{type: "about:blank", title: "Business Rule Violation", status: 422, detail: $reason, code: "limit_exceeded",
+    retryable: false, errors: [{name: "workspaceId", reason: $reason, params: {limit: "1000"}}]}' \
+  >"$work/params.json"
+jq -c '.errors[0].params.limit = 1000' "$work/params.json" >"$work/params-number.json"
+holds_contract "a refusal whose params are strings is an ApiError" ApiError "$work/params.json"
+code=0
+python3 "$shape" "$contract" ApiError "$work/params-number.json" 2>"$work/shape" || code=$?
+if [[ "$code" -eq 1 ]] && grep -qF 'params.limit is not a string' "$work/shape"; then
+  pass "a param that is not a string fails the check"
+else
+  fail "a param that is not a string fails the check" "exit $code: $(head -3 "$work/shape")"
+fi
 check "the receipts checked include planned totals and an apply date" \
   bash -c 'grep -lq "\"planned\":{" "$@" && grep -lq "\"appliedOn\":\"" "$@"' _ "${receipts[@]}"
 check "the applies posted include the AWS fixtures" grep -lq 'arn:aws:' "${apply_bodies[@]}"

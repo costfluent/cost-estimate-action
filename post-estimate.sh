@@ -119,10 +119,13 @@ json_file() {
   jq -e 'type == "object"' "$2" >/dev/null 2>&1 || die "$1 ($2) is not JSON"
 }
 
-# The problem document's title, detail and field errors, or the body itself, on one line.
+# The problem document's title, detail and field errors, or the body itself, on one line. The
+# Costfluent API's field errors are a list of {name, reason}; GitHub's entries have other fields
+# (field, message), so an entry of any other shape is printed whole rather than dropped.
 problem() {
   jq -r '[.title, .detail, .message,
-          (.errors // {} | to_entries[]? | "\(.key): \(.value | if type == "array" then join(" ") else tostring end)")]
+          (.errors[]? | if type == "object" and (.name | type) == "string" and (.reason | type) == "string"
+                        then "\(.name): \(.reason)" else tojson end)]
          | map(select(type == "string" and . != "")) | join(": ")' "$1" 2>/dev/null \
     || head -c 2000 "$1"
 }
